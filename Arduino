@@ -1,0 +1,70 @@
+import time
+
+import pyfirmata
+
+
+
+def steinhart_temperature_C(r, Ro=10000.0, To=25.0, beta=3950.0):  #    Steinhart–Hart equation calculate Temp
+
+   import math
+
+   steinhart = math.log(r / Ro) / beta     # log(R/Ro) / beta
+
+   steinhart += 1.0 / (To + 273.15)        # log(R/Ro) / beta + 1/To
+
+   steinhart = (1.0 / steinhart) - 273.15  # Invert, convert to C
+
+   return steinhart
+
+t=0
+
+board = pyfirmata.Arduino('COM3')  # Pyfirmata define the serial port
+
+analog_input = board.get_pin('a:1:i')  # Define analog 0 as the input
+
+
+start_time=time.time() 
+
+with open("temperature_data.csv",'w+', encoding='utf-8') as wr:  # with open csv document.
+
+   it = pyfirmata.util.Iterator(board) # open iterator, it is must, or will not read value
+
+   it.start()
+
+   header="Time(s),Voltage(v),Temperature(°C)"
+
+   wr.write(header)
+
+   wr.write("\n")
+
+   while t<=120: # Define read time , here is seconds
+
+       Temp_value = analog_input.read() # PyFirmate read 1/5 of the real value
+
+       if Temp_value is not None:    # check temp is not none, if is,can't change the datatype to float
+
+           Temp_value=5*Temp_value  
+
+           R1=Temp_value*9800/(5-Temp_value) # Calculate resistance
+
+           Temperature=round(steinhart_temperature_C(R1),2)
+
+           Temp1=str(t)+','+str(Temp_value)+','+str(Temperature)
+
+           wr.write(str(Temp1)) 
+
+           wr.write("\n")        # next row
+
+           time.sleep(1)
+
+           t=int((time.time()-start_time))
+
+           print("Temperature is :",Temperature)
+
+           print("Time is : ",t)
+
+           print("Voltage",Temp_value)
+
+wr.close()  # Close document
+
+board.sp.close() # Close port, python will hold the port.
